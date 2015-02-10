@@ -65,31 +65,18 @@ inline std::string getPrefixParam(ros::NodeHandle & nh) {
  * \deprecated Use TransformListener::remap  instead */
 std::string remap(const std::string& frame_id) __attribute__((deprecated));
 
-/** \brief This class inherits from Transformer and automatically subscribes to ROS transform messages */
-class TransformListener : public Transformer { //subscribes to message and automatically stores incoming data
 
+class TransformerHelper : public Transformer {
 public:
-  /**@brief Constructor for transform listener
-   * \param max_cache_time How long to store transform information */
-  TransformListener(ros::Duration max_cache_time = ros::Duration(DEFAULT_CACHE_TIME), bool spin_thread = true);
-
-  /**
-   * \brief Alternate constructor for transform listener
-   * \param nh The NodeHandle to use for any ROS interaction
-   * \param max_cache_time How long to store transform information
-   */
-  TransformListener(const ros::NodeHandle& nh,
-                    ros::Duration max_cache_time = ros::Duration(DEFAULT_CACHE_TIME), bool spin_thread = true);
+  TransformerHelper(ros::Duration max_cache_time = ros::Duration(DEFAULT_CACHE_TIME));
+  virtual ~TransformerHelper();
   
-  ~TransformListener();
-
   /* Methods from transformer unhiding them here */
   using Transformer::transformQuaternion;
   using Transformer::transformVector;
   using Transformer::transformPoint;
   using Transformer::transformPose;
-
-
+  
   /** \brief Transform a Stamped Quaternion Message into the target frame 
    * This can throw all that lookupTransform can throw as well as tf::InvalidTransform */
   void transformQuaternion(const std::string& target_frame, const geometry_msgs::QuaternionStamped& stamped_in, geometry_msgs::QuaternionStamped& stamped_out) const;
@@ -140,9 +127,7 @@ public:
                            const sensor_msgs::PointCloud& pcin,
                            const std::string& fixed_frame, sensor_msgs::PointCloud& pcout) const;
 
-
-
-    ///\todo move to high precision laser projector class  void projectAndTransformLaserScan(const sensor_msgs::LaserScan& scan_in, sensor_msgs::PointCloud& pcout);
+  ///\todo move to high precision laser projector class  void projectAndTransformLaserScan(const sensor_msgs::LaserScan& scan_in, sensor_msgs::PointCloud& pcout);
 
   bool getFrames(tf::FrameGraph::Request& req, tf::FrameGraph::Response& res) 
   {
@@ -158,20 +143,39 @@ public:
     return tf::resolve(prefix, frame_name);
   };
 
+private:
+  /** @brief a helper function to be used for both transfrom pointCloud methods */
+  void transformPointCloud(const std::string & target_frame, const Transform& transform, const ros::Time& target_time, const sensor_msgs::PointCloud& pcin, sensor_msgs::PointCloud& pcout) const;
+};
+
+
+/** \brief This class inherits from TransformerHelper and automatically subscribes to ROS transform messages */
+class TransformListener : public TransformerHelper { //subscribes to message and automatically stores incoming data
+
+public:
+  /**@brief Constructor for transform listener
+   * \param max_cache_time How long to store transform information */
+  TransformListener(ros::Duration max_cache_time = ros::Duration(DEFAULT_CACHE_TIME), bool spin_thread = true);
+
+  /**
+   * \brief Alternate constructor for transform listener
+   * \param nh The NodeHandle to use for any ROS interaction
+   * \param max_cache_time How long to store transform information
+   */
+  TransformListener(const ros::NodeHandle& nh,
+                    ros::Duration max_cache_time = ros::Duration(DEFAULT_CACHE_TIME), bool spin_thread = true);
+  
+  ~TransformListener();
+
 protected:
   bool ok() const;
 
 private:
-
   // Must be above the listener
   ros::NodeHandle node_;
 
   /// replacing implementation with tf2_ros'
   tf2_ros::TransformListener tf2_listener_;
-
-  /** @brief a helper function to be used for both transfrom pointCloud methods */
-  void transformPointCloud(const std::string & target_frame, const Transform& transform, const ros::Time& target_time, const sensor_msgs::PointCloud& pcin, sensor_msgs::PointCloud& pcout) const;
-
 };
 }
 
